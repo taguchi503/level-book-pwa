@@ -1,0 +1,8 @@
+{
+  "name":"森建設 水準測量・野帳",
+  "short_name":"水準測量",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#ffffff",
+  "theme_color":"#064a80"
+}

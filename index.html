@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#064a80">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="水準測量">
+  <title>森建設 水準測量・野帳</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar no-print">
+      <div>
+        <div class="eyebrow">森建設工業DX</div>
+        <h1>水準測量（レベル）</h1>
+      </div>
+      <div class="top-actions">
+        <span class="version">v0.1.0</span>
+        <button id="settingsBtn" class="icon-btn" type="button" aria-label="測量設定">⚙</button>
+      </div>
+    </header>
+
+    <section id="updateBanner" class="update-banner hidden no-print" role="status">
+      <div><strong id="updateTitle">最新版があります</strong><span id="updateText"></span></div>
+      <div class="update-actions"><button id="updateNowBtn" type="button">最新版へ更新</button><button id="updateLaterBtn" type="button">あとで</button></div>
+    </section>
+
+    <nav class="view-tabs no-print" aria-label="画面切替">
+      <button class="view-tab active" data-view="measure" type="button">測定</button>
+      <button class="view-tab" data-view="history" type="button">確認・履歴</button>
+      <button class="view-tab" data-view="ledger" type="button">野帳</button>
+    </nav>
+
+    <section id="measureView" class="app-view active-view">
+      <section class="status-card">
+        <div class="station-row"><span>器械点</span><strong id="stationNo">1</strong><button id="changeStationBtn" class="mini-link no-print" type="button">設定を確認</button></div>
+        <div class="hi-row"><span>HI（器械高）</span><strong id="currentHI">—</strong><b>m</b></div>
+        <div class="next-row"><span>次の測定</span><strong id="nextAction">BS（後視）</strong></div>
+      </section>
+
+      <section class="entry-card">
+        <label class="big-label" for="pointInput">点名</label>
+        <div class="point-row">
+          <input id="pointInput" class="big-input point-input" type="text" placeholder="例：No.12 / TP1">
+          <button id="voiceBtn" class="voice-btn no-print" type="button"><span>🎤</span><small>音声入力</small></button>
+        </div>
+
+        <label class="big-label" for="readingInput">読み値［m］</label>
+        <div class="reading-wrap">
+          <input id="readingInput" class="big-input reading-input" type="number" step="0.001" inputmode="decimal" placeholder="0.000">
+          <button id="clearReadingBtn" class="clear-btn no-print" type="button" aria-label="読み値を消す">×</button>
+        </div>
+
+        <button id="recordBtn" class="record-btn no-print" type="button">✓ BSを記録</button>
+
+        <div class="mode-row no-print">
+          <button class="mode-btn bs active" data-mode="BS" type="button">BS</button>
+          <button class="mode-btn fs" data-mode="FS" type="button">FS</button>
+          <button class="mode-btn tp" data-mode="TP" type="button">TP</button>
+        </div>
+        <p class="tp-note">※TPはFSとして記録し、点名が「TP」で始まる場合に転点として判定します。</p>
+      </section>
+
+      <section id="voiceConfirmPanel" class="voice-confirm hidden no-print">
+        <div class="voice-confirm-title">🎤 音声認識の確認</div>
+        <strong id="voiceConfirmText">—</strong>
+        <div class="voice-confirm-actions">
+          <button id="voiceApplyBtn" class="confirm-btn" type="button">✓ 確定</button>
+          <button id="voiceRetryBtn" class="retry-btn" type="button">↶ 言い直す</button>
+        </div>
+      </section>
+
+      <section class="last-card">
+        <div class="section-bar">直前の測定</div>
+        <div id="lastRecord" class="last-record empty">まだ記録がありません</div>
+      </section>
+
+      <section class="quick-actions no-print">
+        <button id="undoBtn" type="button">↶<small>1つ戻す</small></button>
+        <button id="editLastBtn" type="button">✎<small>修正</small></button>
+        <button id="openLedgerBtn" type="button">▤<small>野帳を見る</small></button>
+        <button id="openOutputBtn" type="button">▣<small>保存・出力</small></button>
+      </section>
+
+      <p id="statusMessage" class="status-message no-print" aria-live="polite">点名と読み値を入力して記録してください。</p>
+    </section>
+
+    <section id="historyView" class="app-view">
+      <section class="panel">
+        <div class="section-bar">直前の測定（最新1件）</div>
+        <div id="historyLast" class="history-last empty">まだ記録がありません</div>
+      </section>
+
+      <section class="panel">
+        <div class="section-bar">最近の記録（最新5件）</div>
+        <div class="table-scroll">
+          <table class="mini-table">
+            <thead><tr><th>No.</th><th>種別</th><th>点名</th><th>読み値[m]</th><th>標高[m]</th></tr></thead>
+            <tbody id="recentBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-bar">測量チェック（現在まで）</div>
+        <div class="check-grid">
+          <div><span>検算ΣBS</span><strong id="sumBS">0.000 m</strong></div>
+          <div><span>検算ΣFS</span><strong id="sumFS">0.000 m</strong></div>
+          <div class="accent"><span>標高差</span><strong id="diff">0.000 m</strong></div>
+          <div class="accent"><span>始点→最新標高差</span><strong id="elevDiff">—</strong></div>
+        </div>
+        <div id="checkResult" class="check-result neutral">測定データ待ち</div><p class="check-note">検算ΣFSは「TPのFS＋現在の最終点」を使用します。普通点のFSは標高計算には使いますが、検算合計には含めません。</p>
+      </section>
+    </section>
+
+    <section id="ledgerView" class="app-view print-target">
+      <section class="ledger-head">
+        <div>
+          <div class="ledger-title">水準測量 野帳</div>
+          <div id="ledgerSite" class="ledger-sub">—</div>
+        </div>
+        <div class="ledger-summary">
+          <span>測点数 <b id="ledgerCount">0</b></span>
+          <span>検算ΣBS <b id="ledgerSumBS">0.000 m</b></span>
+          <span>検算ΣFS <b id="ledgerSumFS">0.000 m</b></span>
+          <span class="highlight">標高差 <b id="ledgerDiff">0.000 m</b></span>
+        </div>
+      </section>
+      <div class="table-scroll ledger-scroll">
+        <table class="ledger-table">
+          <thead><tr><th>No.</th><th>種別</th><th>点名</th><th>読み値[m]</th><th>HI[m]</th><th>標高[m]</th><th>備考</th></tr></thead>
+          <tbody id="ledgerBody"></tbody>
+        </table>
+      </div>
+      <div class="ledger-actions no-print">
+        <button id="pdfBtn" class="pdf-btn" type="button">PDF・印刷</button>
+        <button id="excelBtn" class="excel-btn" type="button">Excel出力</button>
+        <button id="shareBtn" class="share-btn" type="button">共有</button>
+      </div>
+      <p class="ledger-hint no-print">野帳の行をタップすると、その記録を修正できます。</p>
+    </section>
+  </main>
+
+  <dialog id="settingsDialog" class="dialog-box">
+    <form method="dialog" class="dialog-inner">
+      <h2>測量設定</h2>
+      <label>現場名<input id="settingSiteName" type="text" placeholder="例：子吉川工事"></label>
+      <label>測量日<input id="settingSurveyDate" type="date"></label>
+      <div class="dialog-grid">
+        <label>開始点名<input id="settingStartPoint" type="text" placeholder="BM1"></label>
+        <label>開始標高［m］<input id="settingStartElev" type="number" step="0.001" inputmode="decimal"></label>
+      </div>
+      <label class="check-line"><input id="settingConfirmVoice" type="checkbox"> 音声入力後に「確定／言い直す」を表示</label>
+      <p class="dialog-note">既存の測定データは消しません。開始標高を変更すると計算結果は再計算されます。</p>
+      <div class="dialog-actions"><button value="cancel" class="secondary" type="submit">閉じる</button><button id="saveSettingsBtn" value="default" class="primary" type="button">設定を保存</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="editDialog" class="dialog-box">
+    <form method="dialog" class="dialog-inner">
+      <h2>記録を修正</h2>
+      <div id="editTypeLabel" class="edit-type">—</div>
+      <label>点名<input id="editPoint" type="text"></label>
+      <label>読み値［m］<input id="editReading" type="number" step="0.001" inputmode="decimal"></label>
+      <label id="editNoteWrap">備考<input id="editNote" type="text" placeholder="任意"></label>
+      <div class="dialog-actions"><button value="cancel" class="secondary" type="submit">キャンセル</button><button id="saveEditBtn" class="primary" type="button">修正を保存</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="outputDialog" class="dialog-box">
+    <form method="dialog" class="dialog-inner">
+      <h2>保存・出力</h2>
+      <div class="output-list">
+        <button id="manualSaveBtn" type="button">端末に保存</button>
+        <button id="jsonExportBtn" type="button">バックアップ出力（JSON）</button>
+        <label class="file-button">バックアップ読込（JSON）<input id="jsonImportFile" type="file" accept="application/json,.json"></label>
+        <button id="outputPdfBtn" type="button">PDF・印刷</button>
+        <button id="outputExcelBtn" type="button">Excel出力</button>
+      </div>
+      <p class="dialog-note">入力内容は自動保存しています。端末・ブラウザのデータ削除に備え、必要に応じてJSONバックアップも保存してください。</p>
+      <div class="dialog-actions"><button value="cancel" class="secondary" type="submit">閉じる</button></div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
